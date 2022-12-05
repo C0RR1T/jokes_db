@@ -1,12 +1,14 @@
 package ch.bbw.m151.jokesdb;
 
-import ch.bbw.m151.jokesdb.datamodel.JokesEntity;
+import ch.bbw.m151.jokesdb.datamodel.Joke;
 import ch.bbw.m151.jokesdb.repository.JokesRepository;
 import org.assertj.core.api.WithAssertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
@@ -15,28 +17,32 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 @AutoConfigureMockMvc
 public class JokesDbApplicationTest implements WithAssertions {
 
-	@Autowired
-	JokesRepository jokesRepository;
+    @Autowired
+    JokesRepository jokesRepository;
 
-	@Autowired
-	private WebTestClient webTestClient;
+    @Autowired
+    private WebTestClient client;
 
-	@Test
-	void jokesAreLoadedAtStartup() {
-		var jokes = jokesRepository.findAll();
-		assertThat(jokes).hasSizeGreaterThan(100)
-				.allSatisfy(x -> assertThat(x.getJoke()).isNotEmpty());
-	}
+    @BeforeEach
+    public void cleanup() {
+        jokesRepository.deleteAll();
+    }
 
-	@Test
-	void jokesCanBeRetrievedViaHttpGet() {
-		var pageSize = 5;
-		webTestClient.get()
-				.uri("/jokes?page={page}&size={size}", 1, pageSize)
-				.exchange()
-				.expectStatus()
-				.is2xxSuccessful()
-				.expectBodyList(JokesEntity.class)
-				.hasSize(pageSize);
-	}
+
+    @Test
+    public void jokeDoesExist() {
+        client.get().uri("/jokes").exchange();
+        assertThat(jokesRepository.count()).isGreaterThan(0);
+        assertThat(jokesRepository.findAnyJoke()).isNotEmpty();
+    }
+
+    @Test
+    public void jokeById() {
+        var joke =
+                client.get().uri("/jokes/5").exchange()
+                        .expectBody(Joke.class).returnResult();
+        assertThat(joke.getStatus()).isEqualTo(HttpStatus.OK);
+        assertThat(joke.getResponseBody().getId()).isEqualTo(5);
+        assertThat(jokesRepository.count()).isGreaterThan(0);
+    }
 }
