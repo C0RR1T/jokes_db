@@ -5,14 +5,26 @@ import org.springframework.web.util.UriBuilder;
 
 import java.net.URI;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-@AllArgsConstructor
 public class ParamBuilder {
     private String basePath;
     private String categories;
     private String blackList;
+
+    private String lang;
+
+    private List<String> allowedLang =
+            List.of("cs", "en", "de", "es", "fr", "pt");
+
+    public ParamBuilder(String basePath, String categories, String blackList, String lang) {
+        this.basePath = basePath;
+        this.categories = categories;
+        this.blackList = blackList;
+        this.lang = lang;
+    }
 
     public URI build(UriBuilder builder) {
         if (categories != null) {
@@ -25,6 +37,8 @@ public class ParamBuilder {
                             .map(Category::toString)
                             .collect(Collectors.joining(",")));
 
+        } else {
+            builder.path("Any");
         }
         if (blackList != null) {
             builder.queryParam("blacklistFlags",
@@ -37,6 +51,8 @@ public class ParamBuilder {
                             .collect(Collectors.joining(",")));
 
         }
+        if (lang != null && allowedLang.contains(lang))
+            builder.queryParam("lang", lang);
 
 
         return builder.build();

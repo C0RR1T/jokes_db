@@ -1,6 +1,7 @@
 package ch.bbw.m151.jokesdb.service;
 
 import ch.bbw.m151.jokesdb.datamodel.Joke;
+import ch.bbw.m151.jokesdb.datamodel.ParamBuilder;
 import ch.bbw.m151.jokesdb.repository.JokesRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -10,7 +11,6 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Mono;
 
 import java.util.Optional;
-import java.util.Random;
 
 @Service
 public class JokeService {
@@ -35,13 +35,13 @@ public class JokeService {
         return saveRemoteJoke(id);
     }
 
+    public Optional<Joke> getRandomJoke(String categories, String blacklist,
+                                        String lang) {
+        return saveRemoteJoke(categories, blacklist, lang);
+    }
+
     public Optional<Joke> getRandomJoke() {
-        Random r = new Random();
-        return Optional.ofNullable(repository
-                .findById(r.nextInt(1399))
-                .orElse(saveRemoteJoke()
-                        .orElse(null))
-        );
+        return saveRemoteJoke();
     }
 
     public Optional<Joke> getJokeOfTheDay() {
@@ -54,10 +54,16 @@ public class JokeService {
         return joke;
     }
 
-    private Optional<Joke> saveRemoteJoke() {
-        var joke = getRandomRemoteJoke();
+    private Optional<Joke> saveRemoteJoke(String categories, String blacklist,
+                                          String lang) {
+        var joke = getRandomRemoteJoke(categories, blacklist,
+                lang);
         joke.ifPresent(repository::save);
         return joke;
+    }
+
+    private Optional<Joke> saveRemoteJoke() {
+        return saveRemoteJoke(null, null, null);
     }
 
     private Optional<Joke> getRemoteJoke(Integer id) {
@@ -70,9 +76,11 @@ public class JokeService {
                 .blockOptional();
     }
 
-    private Optional<Joke> getRandomRemoteJoke() {
+    private Optional<Joke> getRandomRemoteJoke(String categories, String blacklist,
+                                               String lang) {
         return client.get()
-                .uri("Any")
+                .uri((queryBuilder) -> new ParamBuilder("", categories,
+                        blacklist, lang).build(queryBuilder))
                 .retrieve()
                 .bodyToMono(Joke.class)
                 .onErrorResume(error -> Mono.empty())
